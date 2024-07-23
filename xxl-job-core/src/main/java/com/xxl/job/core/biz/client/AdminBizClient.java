@@ -32,16 +32,25 @@ public class AdminBizClient implements AdminBiz {
     private int timeout = 3;
 
 
+    /**
+     * 对调度中心的回调
+     */
     @Override
     public ReturnT<String> callback(List<HandleCallbackParam> callbackParamList) {
         return XxlJobRemotingUtil.postBody(addressUrl+"api/callback", accessToken, timeout, callbackParamList, String.class);
     }
 
+    /**
+     * 对调度中心的注册
+     */
     @Override
     public ReturnT<String> registry(RegistryParam registryParam) {
         return XxlJobRemotingUtil.postBody(addressUrl + "api/registry", accessToken, timeout, registryParam, String.class);
     }
 
+    /**
+     * 对调度中心的取消注册
+     */
     @Override
     public ReturnT<String> registryRemove(RegistryParam registryParam) {
         return XxlJobRemotingUtil.postBody(addressUrl + "api/registryRemove", accessToken, timeout, registryParam, String.class);

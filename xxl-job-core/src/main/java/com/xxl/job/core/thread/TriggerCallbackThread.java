@@ -49,7 +49,7 @@ public class TriggerCallbackThread {
     public void start() {
 
         // valid
-        if (XxlJobExecutor.getAdminBizList() == null) {
+        if (XxlJobExecutor.getAdminBizList() == null) { // 校验注册到中心的客户端是否为空
             logger.warn(">>>>>>>>>>> xxl-job, executor callback config fail, adminAddresses is null.");
             return;
         }
@@ -63,17 +63,19 @@ public class TriggerCallbackThread {
                 // normal callback
                 while(!toStop){
                     try {
+                        // 线程死循环的获取阻塞队列中的回调到调度中心的参数，获取不到会进行阻塞
                         HandleCallbackParam callback = getInstance().callBackQueue.take();
                         if (callback != null) {
 
                             // callback list param
                             List<HandleCallbackParam> callbackParamList = new ArrayList<HandleCallbackParam>();
+                            // 将阻塞队列中的参数一次性全部取出，防止生产过多，消费慢的情况
                             int drainToNum = getInstance().callBackQueue.drainTo(callbackParamList);
                             callbackParamList.add(callback);
 
                             // callback, will retry if error
                             if (callbackParamList!=null && callbackParamList.size()>0) {
-                                doCallback(callbackParamList);
+                                doCallback(callbackParamList); // 真正的回调方法
                             }
                         }
                     } catch (Exception e) {
@@ -84,7 +86,7 @@ public class TriggerCallbackThread {
                 }
 
                 // last callback
-                try {
+                try { // 如果线程停止了，最后的处理逻辑
                     List<HandleCallbackParam> callbackParamList = new ArrayList<HandleCallbackParam>();
                     int drainToNum = getInstance().callBackQueue.drainTo(callbackParamList);
                     if (callbackParamList!=null && callbackParamList.size()>0) {
@@ -99,18 +101,18 @@ public class TriggerCallbackThread {
 
             }
         });
-        triggerCallbackThread.setDaemon(true);
+        triggerCallbackThread.setDaemon(true); // 设置为后台线程
         triggerCallbackThread.setName("xxl-job, executor TriggerCallbackThread");
         triggerCallbackThread.start();
 
 
         // retry
-        triggerRetryCallbackThread = new Thread(new Runnable() {
+        triggerRetryCallbackThread = new Thread(new Runnable() { // 启动一个重试线程
             @Override
             public void run() {
                 while(!toStop){
                     try {
-                        retryFailCallbackFile();
+                        retryFailCallbackFile(); // 重试失败的回调文件
                     } catch (Exception e) {
                         if (!toStop) {
                             logger.error(e.getMessage(), e);
@@ -118,7 +120,7 @@ public class TriggerCallbackThread {
 
                     }
                     try {
-                        TimeUnit.SECONDS.sleep(RegistryConfig.BEAT_TIMEOUT);
+                        TimeUnit.SECONDS.sleep(RegistryConfig.BEAT_TIMEOUT); // 等待30s
                     } catch (InterruptedException e) {
                         if (!toStop) {
                             logger.error(e.getMessage(), e);

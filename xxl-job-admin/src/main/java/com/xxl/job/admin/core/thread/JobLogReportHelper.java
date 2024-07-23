@@ -27,19 +27,22 @@ public class JobLogReportHelper {
 
     private Thread logrThread;
     private volatile boolean toStop = false;
+
+    /**日志线程处理2件事，一个是更新3天内的汇总数据，一个是清理大于1天的日志**/
     public void start(){
-        logrThread = new Thread(new Runnable() {
+        logrThread = new Thread(new Runnable() { // 日志线程
 
             @Override
             public void run() {
 
                 // last clean log time
-                long lastCleanLogTime = 0;
+                long lastCleanLogTime = 0; // 上次清理日志时间
 
 
                 while (!toStop) {
 
                     // 1、log-report refresh: refresh log report in 3 days
+                    // 1、日志报告刷新：3 天内刷新日志报告
                     try {
 
                         for (int i = 0; i < 3; i++) {
@@ -81,6 +84,7 @@ public class JobLogReportHelper {
                             }
 
                             // do refresh
+                            // 刷新
                             int ret = XxlJobAdminConfig.getAdminConfig().getXxlJobLogReportDao().update(xxlJobLogReport);
                             if (ret < 1) {
                                 XxlJobAdminConfig.getAdminConfig().getXxlJobLogReportDao().save(xxlJobLogReport);
@@ -94,6 +98,7 @@ public class JobLogReportHelper {
                     }
 
                     // 2、log-clean: switch open & once each day
+                    // 2、日志清理：每天一次
                     if (XxlJobAdminConfig.getAdminConfig().getLogretentiondays()>0
                             && System.currentTimeMillis() - lastCleanLogTime > 24*60*60*1000) {
 
@@ -107,7 +112,7 @@ public class JobLogReportHelper {
                         Date clearBeforeTime = expiredDay.getTime();
 
                         // clean expired log
-                        List<Long> logIds = null;
+                        List<Long> logIds = null; // 清理过期的日志
                         do {
                             logIds = XxlJobAdminConfig.getAdminConfig().getXxlJobLogDao().findClearLogIds(0, 0, clearBeforeTime, 0, 1000);
                             if (logIds!=null && logIds.size()>0) {
@@ -116,11 +121,11 @@ public class JobLogReportHelper {
                         } while (logIds!=null && logIds.size()>0);
 
                         // update clean time
-                        lastCleanLogTime = System.currentTimeMillis();
+                        lastCleanLogTime = System.currentTimeMillis(); // 更新清理时间
                     }
 
                     try {
-                        TimeUnit.MINUTES.sleep(1);
+                        TimeUnit.MINUTES.sleep(1); // 一分钟检查一次
                     } catch (Exception e) {
                         if (!toStop) {
                             logger.error(e.getMessage(), e);

@@ -29,14 +29,14 @@ public class XxlJobExecutor  {
     private static final Logger logger = LoggerFactory.getLogger(XxlJobExecutor.class);
 
     // ---------------------- param ----------------------
-    private String adminAddresses;
-    private String accessToken;
-    private String appname;
-    private String address;
-    private String ip;
-    private int port;
-    private String logPath;
-    private int logRetentionDays;
+    private String adminAddresses; // 调度中心配置的地址
+    private String accessToken; // 访问控制的token
+    private String appname; // 本地应用的名字
+    private String address; // 本地的地址，也就是注册地址，如果设置了值就忽略ip+端口的地址
+    private String ip; // 本地的ip
+    private int port; // 本地的端口
+    private String logPath; // 日志路径
+    private int logRetentionDays; // 保留日志的天数
 
     public void setAdminAddresses(String adminAddresses) {
         this.adminAddresses = adminAddresses;
@@ -68,28 +68,28 @@ public class XxlJobExecutor  {
     public void start() throws Exception {
 
         // init logpath
-        XxlJobFileAppender.initLogPath(logPath);
+        XxlJobFileAppender.initLogPath(logPath); // 初始化日志路径
 
         // init invoker, admin-client
-        initAdminBizList(adminAddresses, accessToken);
+        initAdminBizList(adminAddresses, accessToken); // 根据中心调度平台，初始化调用的客户端对象
 
 
         // init JobLogFileCleanThread
-        JobLogFileCleanThread.getInstance().start(logRetentionDays);
+        JobLogFileCleanThread.getInstance().start(logRetentionDays); // 启动日志文件清理线程，用来清理日志文件
 
         // init TriggerCallbackThread
-        TriggerCallbackThread.getInstance().start();
+        TriggerCallbackThread.getInstance().start(); // 启动回调线程
 
         // init executor-server
-        initEmbedServer(address, ip, port, appname, accessToken);
+        initEmbedServer(address, ip, port, appname, accessToken); // 初始化客户端服务
     }
 
     public void destroy(){
         // destroy executor-server
-        stopEmbedServer();
+        stopEmbedServer(); // 停止客户端服务
 
         // destroy jobThreadRepository
-        if (jobThreadRepository.size() > 0) {
+        if (jobThreadRepository.size() > 0) { // 销毁处理的线程
             for (Map.Entry<Integer, JobThread> item: jobThreadRepository.entrySet()) {
                 JobThread oldJobThread = removeJobThread(item.getKey(), "web container destroy and kill the job.");
                 // wait for job thread push result to callback queue
@@ -107,10 +107,10 @@ public class XxlJobExecutor  {
 
 
         // destroy JobLogFileCleanThread
-        JobLogFileCleanThread.getInstance().toStop();
+        JobLogFileCleanThread.getInstance().toStop(); // 停止日志清理
 
         // destroy TriggerCallbackThread
-        TriggerCallbackThread.getInstance().toStop();
+        TriggerCallbackThread.getInstance().toStop(); // 停止回调线程
 
     }
 
@@ -119,11 +119,14 @@ public class XxlJobExecutor  {
     private static List<AdminBiz> adminBizList;
     private void initAdminBizList(String adminAddresses, String accessToken) throws Exception {
         if (adminAddresses!=null && adminAddresses.trim().length()>0) {
+            // 配置中心的地址，根据逗号分隔
             for (String address: adminAddresses.trim().split(",")) {
                 if (address!=null && address.trim().length()>0) {
 
+                    // 根据每一个地址生成一个连接中心的客户端
                     AdminBiz adminBiz = new AdminBizClient(address.trim(), accessToken);
 
+                    // 存放的链表为空，则先创建一个，然后将客户端放入链表缓存起来
                     if (adminBizList == null) {
                         adminBizList = new ArrayList<AdminBiz>();
                     }
@@ -138,27 +141,27 @@ public class XxlJobExecutor  {
     }
 
     // ---------------------- executor-server (rpc provider) ----------------------
-    private EmbedServer embedServer = null;
+    private EmbedServer embedServer = null; // 内嵌的服务端，需要和中心节点通信
 
     private void initEmbedServer(String address, String ip, int port, String appname, String accessToken) throws Exception {
 
         // fill ip port
         port = port>0?port: NetUtil.findAvailablePort(9999);
-        ip = (ip!=null&&ip.trim().length()>0)?ip: IpUtil.getIp();
+        ip = (ip!=null&&ip.trim().length()>0)?ip: IpUtil.getIp(); // 填充ip和端口
 
         // generate address
-        if (address==null || address.trim().length()==0) {
+        if (address==null || address.trim().length()==0) {  // 生成地址
             String ip_port_address = IpUtil.getIpPort(ip, port);   // registry-address：default use address to registry , otherwise use ip:port if address is null
             address = "http://{ip_port}/".replace("{ip_port}", ip_port_address);
         }
 
         // accessToken
-        if (accessToken==null || accessToken.trim().length()==0) {
+        if (accessToken==null || accessToken.trim().length()==0) { // 访问Token
             logger.warn(">>>>>>>>>>> xxl-job accessToken is empty. To ensure system security, please set the accessToken.");
         }
 
         // start
-        embedServer = new EmbedServer();
+        embedServer = new EmbedServer(); // 启动服务
         embedServer.start(address, port, appname, accessToken);
     }
 
@@ -166,7 +169,7 @@ public class XxlJobExecutor  {
         // stop provider factory
         if (embedServer != null) {
             try {
-                embedServer.stop();
+                embedServer.stop(); // 停止服务
             } catch (Exception e) {
                 logger.error(e.getMessage(), e);
             }
@@ -175,14 +178,20 @@ public class XxlJobExecutor  {
 
 
     // ---------------------- job handler repository ----------------------
+    /**创建一个ConcurrentMap，根据名称存储IJobHandler**/
     private static ConcurrentMap<String, IJobHandler> jobHandlerRepository = new ConcurrentHashMap<String, IJobHandler>();
+
     public static IJobHandler loadJobHandler(String name){
         return jobHandlerRepository.get(name);
     }
+
+    /**注册一个IJobHandler**/
     public static IJobHandler registJobHandler(String name, IJobHandler jobHandler){
         logger.info(">>>>>>>>>>> xxl-job register jobhandler success, name:{}, jobHandler:{}", name, jobHandler);
         return jobHandlerRepository.put(name, jobHandler);
     }
+
+    /**根据注解XxlJob,带有注解的bean对象，执行的方法注册**/
     protected void registJobHandler(XxlJob xxlJob, Object bean, Method executeMethod){
         if (xxlJob == null) {
             return;
@@ -190,8 +199,8 @@ public class XxlJobExecutor  {
 
         String name = xxlJob.value();
         //make and simplify the variables since they'll be called several times later
-        Class<?> clazz = bean.getClass();
-        String methodName = executeMethod.getName();
+        Class<?> clazz = bean.getClass(); // 获取类名
+        String methodName = executeMethod.getName(); // 获取方法名
         if (name.trim().length() == 0) {
             throw new RuntimeException("xxl-job method-jobhandler name invalid, for[" + clazz + "#" + methodName + "] .");
         }
@@ -209,7 +218,7 @@ public class XxlJobExecutor  {
                     "The correct method format like \" public ReturnT<String> execute(String param) \" .");
         }*/
 
-        executeMethod.setAccessible(true);
+        executeMethod.setAccessible(true); // 设置方法可访问
 
         // init and destroy
         Method initMethod = null;
@@ -217,7 +226,7 @@ public class XxlJobExecutor  {
 
         if (xxlJob.init().trim().length() > 0) {
             try {
-                initMethod = clazz.getDeclaredMethod(xxlJob.init());
+                initMethod = clazz.getDeclaredMethod(xxlJob.init()); // 获取init的方法
                 initMethod.setAccessible(true);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("xxl-job method-jobhandler initMethod invalid, for[" + clazz + "#" + methodName + "] .");
@@ -225,35 +234,40 @@ public class XxlJobExecutor  {
         }
         if (xxlJob.destroy().trim().length() > 0) {
             try {
-                destroyMethod = clazz.getDeclaredMethod(xxlJob.destroy());
+                destroyMethod = clazz.getDeclaredMethod(xxlJob.destroy()); // 获取destory方法
                 destroyMethod.setAccessible(true);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("xxl-job method-jobhandler destroyMethod invalid, for[" + clazz + "#" + methodName + "] .");
             }
         }
 
-        // registry jobhandler
+        // 注册 jobhandler
         registJobHandler(name, new MethodJobHandler(bean, executeMethod, initMethod, destroyMethod));
 
     }
 
 
     // ---------------------- job thread repository ----------------------
+    /** 创建一个ConcurrentMap，jobId -> JobThread **/
     private static ConcurrentMap<Integer, JobThread> jobThreadRepository = new ConcurrentHashMap<Integer, JobThread>();
+
+    /**用JobId和IJobHandler注册JobThread**/
     public static JobThread registJobThread(int jobId, IJobHandler handler, String removeOldReason){
-        JobThread newJobThread = new JobThread(jobId, handler);
-        newJobThread.start();
+        JobThread newJobThread = new JobThread(jobId, handler); // JobId和IJobHandler创建一个JobThread
+        newJobThread.start(); // 线程启动
         logger.info(">>>>>>>>>>> xxl-job regist JobThread success, jobId:{}, handler:{}", new Object[]{jobId, handler});
 
+        // 存入jobThreadRepository，存在返回旧的值，返回了旧的值则需要销毁
         JobThread oldJobThread = jobThreadRepository.put(jobId, newJobThread);	// putIfAbsent | oh my god, map's put method return the old value!!!
         if (oldJobThread != null) {
             oldJobThread.toStop(removeOldReason);
             oldJobThread.interrupt();
         }
 
-        return newJobThread;
+        return newJobThread; // 反馈新的线程
     }
 
+    /**根据JobId和理由移除一个存在的线程**/
     public static JobThread removeJobThread(int jobId, String removeOldReason){
         JobThread oldJobThread = jobThreadRepository.remove(jobId);
         if (oldJobThread != null) {

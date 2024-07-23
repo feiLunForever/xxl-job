@@ -35,18 +35,20 @@ public class JobAlarmer implements ApplicationContextAware, InitializingBean {
     }
 
     /**
+     * 从spring 容器中获取所有实现了JobAlarm接口的实现类 <p></p>
      * job alarm
      *
      * @param info
      * @param jobLog
      * @return
+     *
      */
     public boolean alarm(XxlJobInfo info, XxlJobLog jobLog) {
 
         boolean result = false;
         if (jobAlarmList!=null && jobAlarmList.size()>0) {
             result = true;  // success means all-success
-            for (JobAlarm alarm: jobAlarmList) {
+            for (JobAlarm alarm: jobAlarmList) { // 逐个执行告警方法
                 boolean resultItem = false;
                 try {
                     resultItem = alarm.doAlarm(info, jobLog);

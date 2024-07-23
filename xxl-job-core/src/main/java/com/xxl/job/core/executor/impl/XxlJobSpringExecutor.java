@@ -35,14 +35,14 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
         /*initJobHandlerRepository(applicationContext);*/
 
         // init JobHandler Repository (for method)
-        initJobHandlerMethodRepository(applicationContext);
+        initJobHandlerMethodRepository(applicationContext); // 初始化JobHandler的仓库
 
         // refresh GlueFactory
-        GlueFactory.refreshInstance(1);
+        GlueFactory.refreshInstance(1); // 创建GlueFactory
 
         // super start
         try {
-            super.start();
+            super.start(); // 调用父类的start方法
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -77,21 +77,29 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
         }
     }*/
 
+    /**
+     * 对spring容器中所有的bean进行一个过滤
+     * 如果是带有@Lazy懒加载标签的，不处理
+     * 找到带有注解@XxlJob的方法进行注册，即调用registJobHandler方法
+     *
+     * @param applicationContext
+     */
     private void initJobHandlerMethodRepository(ApplicationContext applicationContext) {
         if (applicationContext == null) {
             return;
         }
         // init job handler from method
+        // spring容器中所有的bean
         String[] beanDefinitionNames = applicationContext.getBeanNamesForType(Object.class, false, true);
         for (String beanDefinitionName : beanDefinitionNames) {
 
             // get bean
             Object bean = null;
             Lazy onBean = applicationContext.findAnnotationOnBean(beanDefinitionName, Lazy.class);
-            if (onBean!=null){
+            if (onBean != null) { // 带有@Lazy懒加载标签的，不处理
                 logger.debug("xxl-job annotation scan, skip @Lazy Bean:{}", beanDefinitionName);
                 continue;
-            }else {
+            } else {
                 bean = applicationContext.getBean(beanDefinitionName);
             }
 
@@ -108,7 +116,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
             } catch (Throwable ex) {
                 logger.error("xxl-job method-jobhandler resolve error for bean[" + beanDefinitionName + "].", ex);
             }
-            if (annotatedMethods==null || annotatedMethods.isEmpty()) {
+            if (annotatedMethods == null || annotatedMethods.isEmpty()) {
                 continue;
             }
 

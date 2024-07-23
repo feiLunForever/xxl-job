@@ -33,12 +33,13 @@ public class EmbedServer {
     private ExecutorBiz executorBiz;
     private Thread thread;
 
+    /**创建了一个Netty服务端，监听端口。然后由Netty来帮忙进行Http协议的编码和解码。而我们只需要关注业务，也就是EmbedHttpServerHandler的处理逻辑**/
     public void start(final String address, final int port, final String appname, final String accessToken) {
-        executorBiz = new ExecutorBizImpl();
-        thread = new Thread(new Runnable() {
+        executorBiz = new ExecutorBizImpl(); // 实现业务操作功能
+        thread = new Thread(new Runnable() { // 创建一个线程
             @Override
             public void run() {
-                // param
+                // 采用 netty 进行网络服务
                 EventLoopGroup bossGroup = new NioEventLoopGroup();
                 EventLoopGroup workerGroup = new NioEventLoopGroup();
                 ThreadPoolExecutor bizThreadPool = new ThreadPoolExecutor(
@@ -61,16 +62,19 @@ public class EmbedServer {
                         });
                 try {
                     // start server
-                    ServerBootstrap bootstrap = new ServerBootstrap();
+                    ServerBootstrap bootstrap = new ServerBootstrap(); // 开启网络服务
                     bootstrap.group(bossGroup, workerGroup)
                             .channel(NioServerSocketChannel.class)
                             .childHandler(new ChannelInitializer<SocketChannel>() {
                                 @Override
                                 public void initChannel(SocketChannel channel) throws Exception {
                                     channel.pipeline()
+                                            // 空闲检测
                                             .addLast(new IdleStateHandler(0, 0, 30 * 3, TimeUnit.SECONDS))  // beat 3N, close if idle
+                                            // 支持http协议
                                             .addLast(new HttpServerCodec())
                                             .addLast(new HttpObjectAggregator(5 * 1024 * 1024))  // merge request & reponse to FULL
+                                            // 业务逻辑处理
                                             .addLast(new EmbedHttpServerHandler(executorBiz, accessToken, bizThreadPool));
                                 }
                             })
@@ -82,7 +86,7 @@ public class EmbedServer {
                     logger.info(">>>>>>>>>>> xxl-job remoting server start success, nettype = {}, port = {}", EmbedServer.class, port);
 
                     // start registry
-                    startRegistry(appname, address);
+                    startRegistry(appname, address); // 启动注册
 
                     // wait util stop
                     future.channel().closeFuture().sync();
@@ -102,6 +106,7 @@ public class EmbedServer {
                 }
             }
         });
+        // 设置为后台线程
         thread.setDaemon(true);    // daemon, service jvm, user thread leave >>> daemon leave >>> jvm leave
         thread.start();
     }
@@ -144,6 +149,7 @@ public class EmbedServer {
         protected void channelRead0(final ChannelHandlerContext ctx, FullHttpRequest msg) throws Exception {
             // request parse
             //final byte[] requestBytes = ByteBufUtil.getBytes(msg.content());    // byteBuf.toString(io.netty.util.CharsetUtil.UTF_8);
+            // 获取调用中心发送过来的请求
             String requestData = msg.content().toString(CharsetUtil.UTF_8);
             String uri = msg.uri();
             HttpMethod httpMethod = msg.method();
@@ -151,21 +157,22 @@ public class EmbedServer {
             String accessTokenReq = msg.headers().get(XxlJobRemotingUtil.XXL_JOB_ACCESS_TOKEN);
 
             // invoke
-            bizThreadPool.execute(new Runnable() {
+            bizThreadPool.execute(new Runnable() { // 由线程池进行异步处理，防止阻塞IO
                 @Override
                 public void run() {
                     // do invoke
                     Object responseObj = process(httpMethod, uri, requestData, accessTokenReq);
 
                     // to json
-                    String responseJson = GsonTool.toJson(responseObj);
+                    String responseJson = GsonTool.toJson(responseObj); // 得到的结果转成JSON
 
                     // write response
-                    writeResponse(ctx, keepAlive, responseJson);
+                    writeResponse(ctx, keepAlive, responseJson); // 返回给调度中心
                 }
             });
         }
 
+        /**具体的处理逻辑**/
         private Object process(HttpMethod httpMethod, String uri, String requestData, String accessTokenReq) {
             // valid
             if (HttpMethod.POST != httpMethod) {
@@ -181,7 +188,7 @@ public class EmbedServer {
             }
 
             // services mapping
-            try {
+            try { // 根据uri进行不同的处理，不过这些处理逻辑全部委托给了executorBiz
                 switch (uri) {
                     case "/beat":
                         return executorBiz.beat();
@@ -207,7 +214,8 @@ public class EmbedServer {
         }
 
         /**
-         * write response
+         * write response <p></p>
+         * 写入返回的http的响应报文
          */
         private void writeResponse(ChannelHandlerContext ctx, boolean keepAlive, String responseJson) {
             // write response

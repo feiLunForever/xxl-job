@@ -40,6 +40,7 @@ public class ExecutorBizClient implements ExecutorBiz {
 
     @Override
     public ReturnT<String> run(TriggerParam triggerParam) {
+        // 发送post请求到各个执行器调度处理
         return XxlJobRemotingUtil.postBody(addressUrl + "run", accessToken, timeout, triggerParam, String.class);
     }
 

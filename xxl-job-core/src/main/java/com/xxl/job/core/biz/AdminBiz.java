@@ -16,7 +16,7 @@ public interface AdminBiz {
 
     /**
      * callback
-     *
+     * 对调度中心的回调<p></p>
      * @param callbackParamList
      * @return
      */
@@ -27,7 +27,7 @@ public interface AdminBiz {
 
     /**
      * registry
-     *
+     * 对调度中心的注册<p></p>
      * @param registryParam
      * @return
      */
@@ -35,7 +35,7 @@ public interface AdminBiz {
 
     /**
      * registry remove
-     *
+     * 对调度中心的取消注册<p></p>
      * @param registryParam
      * @return
      */
