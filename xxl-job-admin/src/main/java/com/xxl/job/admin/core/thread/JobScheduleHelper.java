@@ -232,7 +232,7 @@ public class JobScheduleHelper {
                     if (cost < 1000) {  // scan-overtime, not wait
                         try {
                             // pre-read period: success > scan each second; fail > skip this period;
-                            //如果成功预读了数据，则等待0s-1s，然后快速触发下一次，没有预读到数据，就等待0s-5s内再触发下一次
+                            //如果成功扫出来任务，则等待0s-1s，然后快速触发下一次，没有扫出来任务，就等待0s-5s内再触发下一次
                             TimeUnit.MILLISECONDS.sleep((preReadSuc ? 1000 : PRE_READ_MS) - System.currentTimeMillis() % 1000);
                         } catch (InterruptedException e) {
                             if (!scheduleThreadToStop) {

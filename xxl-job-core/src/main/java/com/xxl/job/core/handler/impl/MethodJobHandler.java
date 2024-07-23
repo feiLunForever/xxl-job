@@ -9,9 +9,13 @@ import java.lang.reflect.Method;
  */
 public class MethodJobHandler extends IJobHandler {
 
+    /**bean对象**/
     private final Object target;
+    /**被@XxlJob注释的方法**/
     private final Method method;
+    /**XxlJob注解中指定的bean中的init方法**/
     private Method initMethod;
+    /**XxlJob注解中指定的bean中的destroy方法**/
     private Method destroyMethod;
 
     public MethodJobHandler(Object target, Method method, Method initMethod, Method destroyMethod) {

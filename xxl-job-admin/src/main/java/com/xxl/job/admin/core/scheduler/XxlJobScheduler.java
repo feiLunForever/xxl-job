@@ -40,7 +40,7 @@ public class XxlJobScheduler  {
         JobLogReportHelper.getInstance().start(); // 日志报表帮助类启动
 
         // start-schedule  ( depend on JobTriggerPoolHelper )
-        JobScheduleHelper.getInstance().start(); // 调度帮助类启动
+        JobScheduleHelper.getInstance().start(); // 启动定时调度
 
         logger.info(">>>>>>>>> init xxl-job admin success.");
     }

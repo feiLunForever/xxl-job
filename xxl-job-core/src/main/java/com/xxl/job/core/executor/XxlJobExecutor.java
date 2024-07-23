@@ -71,6 +71,7 @@ public class XxlJobExecutor  {
         XxlJobFileAppender.initLogPath(logPath); // 初始化日志路径
 
         // init invoker, admin-client
+        // 初始化xxljob admin地址，可能存在多个节点，根据，分隔
         initAdminBizList(adminAddresses, accessToken); // 根据中心调度平台，初始化调用的客户端对象
 
 
@@ -81,6 +82,7 @@ public class XxlJobExecutor  {
         TriggerCallbackThread.getInstance().start(); // 启动回调线程
 
         // init executor-server
+        // 向调度中心发起注册
         initEmbedServer(address, ip, port, appname, accessToken); // 初始化客户端服务
     }
 
@@ -93,7 +95,7 @@ public class XxlJobExecutor  {
             for (Map.Entry<Integer, JobThread> item: jobThreadRepository.entrySet()) {
                 JobThread oldJobThread = removeJobThread(item.getKey(), "web container destroy and kill the job.");
                 // wait for job thread push result to callback queue
-                if (oldJobThread != null) {
+                if (oldJobThread != null) { // 如果存在正在执行的job thread，则等待其执行完毕
                     try {
                         oldJobThread.join();
                     } catch (InterruptedException e) {
@@ -101,9 +103,9 @@ public class XxlJobExecutor  {
                     }
                 }
             }
-            jobThreadRepository.clear();
+            jobThreadRepository.clear(); // 清空 jobThread
         }
-        jobHandlerRepository.clear();
+        jobHandlerRepository.clear(); // 清空jobhandler
 
 
         // destroy JobLogFileCleanThread
